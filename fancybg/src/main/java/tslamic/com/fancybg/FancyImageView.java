@@ -10,10 +10,8 @@ class FancyImageView extends ImageView {
 
     FancyImageView(FancyBackground fancyBackground, View source) {
         super(source.getContext());
-
         mFancyBackground = fancyBackground;
         mSource = source;
-
         setScale(fancyBackground.scale);
     }
 
@@ -30,9 +28,7 @@ class FancyImageView extends ImageView {
     }
 
     void setScale(FancyScale scale) {
-        final ImageView.ScaleType imageScale =
-                ImageView.ScaleType.valueOf(scale.name());
-        setScaleType(imageScale);
+        setScaleType(ImageView.ScaleType.valueOf(scale.name()));
     }
 
 }

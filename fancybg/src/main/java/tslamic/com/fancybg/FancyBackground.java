@@ -5,7 +5,6 @@ import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
-import android.text.TextUtils;
 import android.util.TypedValue;
 import android.view.View;
 import android.view.ViewGroup;
@@ -29,19 +28,23 @@ public class FancyBackground {
     }
 
     public static Builder on(View view) {
+        if (view == null) {
+            throw new IllegalArgumentException("view is null");
+        }
         return new Builder(view);
     }
 
     public static class Builder {
 
-        private final View view;
-
-        private FancyAnimation animation = FancyAnimation.FADE;
+        private FancyAnimation animation = FancyAnimationHelper.FADE;
+        private int cacheSize = FancyLruCache.DEFAULT_SIZE;
         private FancyScale scale = FancyScale.FIT_XY;
-        private long interval = 2500;
         private FancyListener listener;
+        private long interval = 3000;
         private boolean loop = true;
         private int[] drawables;
+
+        private final View view;
 
         public Builder(View view) {
             this.view = view;
@@ -62,8 +65,8 @@ public class FancyBackground {
             return this;
         }
 
-        public Builder interval(long duration) {
-            this.interval = duration;
+        public Builder interval(long millis) {
+            interval = millis;
             return this;
         }
 
@@ -77,40 +80,54 @@ public class FancyBackground {
             return this;
         }
 
+        public Builder cache(int bytes) {
+            cacheSize = bytes;
+            return this;
+        }
+
         public FancyBackground build() {
             return new FancyBackground(this);
         }
 
     }
 
+    // Publicly available instance variables
     public final FancyAnimation animation;
     public final FancyListener listener;
     public final FancyScale scale;
     public final long interval;
+    public final int cacheSize;
     public final boolean loop;
     public final View view;
 
+    // Private data
     private final BitmapFactory.Options mOptions;
     private final TypedValue mTypedValue;
 
     private ScheduledExecutorService mExecutor;
     private FancyImageView mFancyImage;
     private final int[] mDrawables;
+    private FancyLruCache mCache;
     private int mNextIndex;
-
-    private static Bitmap sCacheBitmap;
 
     private FancyBackground(Builder builder) {
         animation = builder.animation;
         listener = builder.listener;
         scale = builder.scale;
         interval = builder.interval;
+        cacheSize = builder.cacheSize;
         loop = builder.loop;
         view = builder.view;
 
         mDrawables = builder.drawables;
         mOptions = new BitmapFactory.Options();
         mTypedValue = new TypedValue();
+
+        if (cacheSize > 0) {
+            mCache = new FancyLruCache(cacheSize);
+        } else if (cacheSize == FancyLruCache.DEFAULT_SIZE) {
+            mCache = new FancyLruCache(view.getContext());
+        }
 
         view.post(new Runnable() {
             @Override
@@ -120,18 +137,19 @@ public class FancyBackground {
         });
     }
 
-    void halt() {
-        if (null != listener) {
-            listener.onStopped(this);
-        }
-        shutdownExecutor();
-    }
-
     private void init() {
         final ViewGroup group = getViewGroup(view);
         mFancyImage = new FancyImageView(this, view);
         group.addView(mFancyImage, 0, view.getLayoutParams());
         start();
+    }
+
+    void halt() {
+        shutdownExecutor();
+        mCache.evictAll();
+        if (null != listener) {
+            listener.onStopped(this);
+        }
     }
 
     private void start() {
@@ -163,14 +181,15 @@ public class FancyBackground {
     private void animateToNextBitmap() {
         final Drawable drawable = getNextDrawable();
         if (drawable != null) {
-            if (null != listener) listener.onNew(this, drawable);
+            if (null != listener) {
+                listener.onNew(this, drawable);
+            }
             animation.animate(this, mFancyImage, drawable);
         }
     }
 
     private Drawable getNextDrawable() {
         final int size = mDrawables.length;
-
         if (mNextIndex >= size && !loop) {
             if (null != listener) {
                 listener.onLoopDone(this);
@@ -179,55 +198,48 @@ public class FancyBackground {
             return null;
         }
 
-        mNextIndex = (mNextIndex + 1) % size;
-        final int resource = mDrawables[mNextIndex];
-
+        final int resource = mDrawables[mNextIndex++ % size];
         final Resources resources = view.getResources();
         resources.getValue(resource, mTypedValue, true);
 
-        final String file = mTypedValue.string.toString();
-        ensureDrawable(resource, file);
-
         final Drawable drawable;
-        if (file.endsWith(".xml")) {
-            drawable = resources.getDrawable(resource);
+        if (isBitmap(mTypedValue)) {
+            drawable = getBitmapDrawable(resources, resource);
         } else {
-            drawable = getBitmapDrawable(view, mOptions, resource);
+            drawable = resources.getDrawable(resource);
         }
 
         return drawable;
     }
 
-    private static Drawable getBitmapDrawable(View source,
-                                              BitmapFactory.Options options,
-                                              int resource) {
-//        if (null != sCacheBitmap) {
-//            sCacheBitmap.recycle();
-//        }
+    private Drawable getBitmapDrawable(final Resources resources,
+                                       final int resource) {
+        final boolean hasCache = mCache != null;
+        Bitmap bitmap = null;
 
-        final Resources resources = source.getResources();
+        if (hasCache) {
+            bitmap = mCache.get(resource);
+        }
 
-        final int w = source.getMeasuredWidth();
-        final int h = source.getMeasuredHeight();
+        if (bitmap == null) {
+            final int w = view.getMeasuredWidth();
+            final int h = view.getMeasuredHeight();
 
-        options.inJustDecodeBounds = true;
-        BitmapFactory.decodeResource(resources, resource, options);
+            mOptions.inJustDecodeBounds = true;
+            BitmapFactory.decodeResource(resources, resource, mOptions);
 
-        options.inSampleSize = getSampleSize(options, w, h);
-        options.inJustDecodeBounds = false;
+            mOptions.inSampleSize = getSampleSize(mOptions, w, h);
+            mOptions.inJustDecodeBounds = false;
 
-        final Bitmap bitmap = BitmapFactory.decodeResource(resources,
-                resource, options);
+            bitmap = BitmapFactory.decodeResource(resources,
+                    resource, mOptions);
 
-        final BitmapDrawable drawable = new BitmapDrawable(resources, bitmap);
-        bitmap.recycle();
-        return drawable;
+            if (hasCache) {
+                mCache.put(resource, bitmap);
+            }
+        }
 
-
-//        sCacheBitmap = BitmapFactory.decodeResource(resources,
-//                resource, options);
-
-        //return new BitmapDrawable(resources, bitmap);
+        return new BitmapDrawable(resources, bitmap);
     }
 
     private void shutdownExecutor() {
@@ -237,11 +249,15 @@ public class FancyBackground {
         }
     }
 
-    private static void ensureDrawable(int resource, String filename) {
-        if (TextUtils.isEmpty(filename)) {
-            throw new IllegalArgumentException("resource not a Drawable: " +
-                    resource);
+    private static boolean isBitmap(final TypedValue value) {
+        boolean isBitmap = false;
+
+        if (TypedValue.TYPE_STRING == value.type) {
+            final String file = value.string.toString();
+            isBitmap = !file.endsWith(".xml");
         }
+
+        return isBitmap;
     }
 
     private static int getSampleSize(BitmapFactory.Options options,

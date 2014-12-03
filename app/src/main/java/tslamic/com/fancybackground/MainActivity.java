@@ -7,7 +7,6 @@ import android.view.View;
 import android.widget.Toast;
 
 import tslamic.com.fancybg.FancyBackground;
-import tslamic.com.fancybg.FancyScale;
 
 
 public class MainActivity extends ActionBarActivity implements FancyBackground.FancyListener {
@@ -22,8 +21,12 @@ public class MainActivity extends ActionBarActivity implements FancyBackground.F
         FancyBackground
                 .on(view)
                 .listener(this)
-                .scale(FancyScale.CENTER)
-                .set(R.drawable.bg_1, R.drawable.bg_2, R.drawable.train_pink, R.drawable.ic_launcher, R.drawable.square)
+                .set(R.drawable.square,
+                        R.drawable.bg_1,
+                        R.drawable.bg_2,
+                        R.drawable.ic_launcher,
+                        R.drawable.train_pink,
+                        R.drawable.blue)
                 .build();
     }
 
