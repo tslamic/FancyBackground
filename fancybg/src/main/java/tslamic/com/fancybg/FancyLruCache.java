@@ -11,6 +11,9 @@ import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
+/**
+ * Default, in-memory LRU Bitmap cache.
+ */
 class FancyLruCache implements FancyCache {
 
     private final LinkedHashMap<Integer, Bitmap> mCache;
@@ -25,7 +28,7 @@ class FancyLruCache implements FancyCache {
     @Override
     public boolean put(int key, Bitmap bitmap) {
         if (bitmap == null) {
-            throw new IllegalArgumentException("trying to cache null bitmap");
+            throw new IllegalArgumentException("caching null bitmap");
         }
 
         final int requiredSize = getBitmapSize(bitmap);

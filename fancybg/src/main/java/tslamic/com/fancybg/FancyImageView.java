@@ -1,9 +1,11 @@
 package tslamic.com.fancybg;
 
+import android.annotation.SuppressLint;
 import android.graphics.drawable.Drawable;
 import android.view.View;
 import android.widget.ImageView;
 
+@SuppressLint("ViewConstructor")
 class FancyImageView extends ImageView {
 
     private final FancyBackground mFancyBackground;
@@ -19,8 +21,9 @@ class FancyImageView extends ImageView {
 
     @Override
     protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
-        setMeasuredDimension(mSource.getMeasuredWidth(),
-                mSource.getMeasuredHeight());
+        final int w = mSource.getMeasuredWidth();
+        final int h = mSource.getMeasuredHeight();
+        setMeasuredDimension(w, h);
     }
 
     @Override
@@ -30,18 +33,22 @@ class FancyImageView extends ImageView {
     }
 
     void setScale(FancyScale scale) {
-        setScaleType(ImageView.ScaleType.valueOf(scale.name()));
+        final ScaleType type = ImageView.ScaleType.valueOf(scale.name());
+        setScaleType(type);
     }
 
-    void fancyAnimate(final Drawable drawable) {
-        if (mFancyBackground.listener != null) {
-            mFancyBackground.listener.onNew(mFancyBackground, drawable);
-        }
-        if (FancyAnimator.NONE == mFancyBackground.animation) {
+    void fancyAnimate(Drawable drawable) {
+        final FancyAnimator animator = mFancyBackground.animator;
+        if (animator == FancyAnimator.NONE) {
             setImageDrawable(drawable);
         } else {
-            mFancyBackground.animation.animate(mFancyBackground,
-                    this, drawable);
+            animator.animate(mFancyBackground, this, drawable);
+        }
+
+        final FancyBackground.FancyListener listener =
+                mFancyBackground.listener;
+        if (listener != null) {
+            listener.onNew(mFancyBackground, drawable);
         }
     }
 

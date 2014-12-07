@@ -21,10 +21,6 @@ class FancyHandler extends Handler {
         final FancyImageView view = mImageViewRef.get();
         if (view != null) {
             view.fancyAnimate((Drawable) msg.obj);
-//            final Drawable drawable = (Drawable) msg.obj;
-//            if (null != drawable) {
-//                mImageView.fancyAnimate(drawable);
-//            }
         }
     }
 

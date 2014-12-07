@@ -2,6 +2,9 @@ package tslamic.com.fancybg;
 
 import android.graphics.Bitmap;
 
+/**
+ * Defines a caching interface.
+ */
 public interface FancyCache {
 
     final FancyCache DEFAULT = null;

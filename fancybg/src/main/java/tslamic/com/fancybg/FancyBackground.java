@@ -5,7 +5,6 @@ import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
-import android.os.Looper;
 import android.os.Message;
 import android.text.TextUtils;
 import android.util.TypedValue;
@@ -40,7 +39,7 @@ public class FancyBackground {
 
     public static class Builder {
 
-        private FancyAnimator animation = FancyAnimator.NONE;
+        private FancyAnimator animator = FancyAnimator.NONE;
         private FancyCache cache = FancyCache.DEFAULT;
         private FancyScale scale = FancyScale.FIT_XY;
         private FancyListener listener;
@@ -48,7 +47,6 @@ public class FancyBackground {
         private long interval = 3000;
         private boolean loop = true;
         private int[] drawables;
-        private int batch = 1;
 
         private final View view;
 
@@ -61,8 +59,8 @@ public class FancyBackground {
             return this;
         }
 
-        public Builder animator(FancyAnimator animation) {
-            this.animation = animation;
+        public Builder animator(FancyAnimator animator) {
+            this.animator = animator;
             return this;
         }
 
@@ -91,11 +89,6 @@ public class FancyBackground {
             return this;
         }
 
-        public Builder batch(int amount) {
-            this.batch = amount;
-            return this;
-        }
-
         public FancyBackground start() {
             return new FancyBackground(this);
         }
@@ -103,14 +96,13 @@ public class FancyBackground {
     }
 
     // Public instance variables
-    public final FancyAnimator animation;
+    public final FancyAnimator animator;
     public final FancyListener listener;
     public final FancyScale scale;
     public final FancyCache cache;
     public final long interval;
     public final boolean loop;
     public final View view;
-    public final int batch;
 
     // Private data
     private final AtomicInteger mIndex = new AtomicInteger(0);
@@ -121,16 +113,14 @@ public class FancyBackground {
     private final int[] mDrawables;
 
     private FancyHandler mHandler;
-    private int mBatchCount;
 
     private FancyBackground(Builder builder) {
-        animation = builder.animation;
+        animator = builder.animator;
         listener = builder.listener;
         scale = builder.scale;
         interval = builder.interval;
         loop = builder.loop;
         view = builder.view;
-        batch = builder.batch;
 
         if (builder.cache == FancyCache.DEFAULT) {
             cache = new FancyLruCache(view.getContext());
@@ -175,63 +165,43 @@ public class FancyBackground {
     }
 
     public void halt() {
+        halt(false);
+    }
+
+    private void halt(boolean isLoopDone) {
         mExecutor.shutdownNow();
         cache.clear();
         if (null != listener) {
-            listener.onStopped(this);
+            if (isLoopDone) {
+                listener.onLoopDone(this);
+            } else {
+                listener.onStopped(this);
+            }
         }
     }
 
     private synchronized void updateDrawable() {
-        if (onUiThread()) {
-            throw new IllegalStateException("sendHandlerUpdate on UI thread");
-        }
-
         final Drawable drawable = getNext();
         if (null != drawable) {
             final Message msg = mHandler.obtainMessage();
             msg.obj = drawable;
             msg.sendToTarget();
         }
-
-        if (batch > 1 && mBatchCount == 0) {
-            mBatchCount = batch;
-            runBatchLoad();
-        } else {
-            --mBatchCount;
-        }
-    }
-
-    private void runBatchLoad() {
-        if (onUiThread()) {
-            throw new IllegalStateException("sendHandlerUpdate on UI thread");
-        }
-
-        System.out.println("BATCH LOAD");
-        long time = System.currentTimeMillis();
-        for (int i = 1, size = mDrawables.length; i < batch; i++) {
-            final int index = (mIndex.get() + i) % size;
-            final int resource = mDrawables[index];
-            getDrawableBATCHTEST(resource);
-        }
-        System.out.println("batch load time: " + (System.currentTimeMillis()
-                - time));
     }
 
     private Drawable getNext() {
-        final int size = mDrawables.length;
+        final Drawable drawable;
 
+        final int size = mDrawables.length;
         if (mIndex.get() >= size && !loop) {
-            mExecutor.shutdownNow();
-            cache.clear();
-            if (null != listener) {
-                listener.onLoopDone(this);
-            }
-            return null;
+            drawable = null;
+            halt(true);
+        } else {
+            final int index = mIndex.getAndIncrement();
+            drawable = getDrawable(mDrawables[index % size]);
         }
 
-        final int index = mIndex.getAndIncrement();
-        return getDrawable(mDrawables[index % size]);
+        return drawable;
     }
 
     private Drawable getDrawable(final int resource) {
@@ -249,14 +219,6 @@ public class FancyBackground {
         }
 
         return drawable;
-    }
-
-    private void getDrawableBATCHTEST(final int resource) {
-        if (isBitmap(resource)) {
-            getBitmap(resource);
-        } else {
-            mResources.getDrawable(resource);
-        }
     }
 
     private Bitmap getBitmap(final int resource) {
@@ -294,10 +256,6 @@ public class FancyBackground {
         }
 
         return isBitmap;
-    }
-
-    private static boolean onUiThread() {
-        return Looper.myLooper() == Looper.getMainLooper();
     }
 
     private static int getSampleSize(BitmapFactory.Options options,

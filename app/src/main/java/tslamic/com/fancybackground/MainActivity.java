@@ -28,7 +28,6 @@ public class MainActivity extends ActionBarActivity implements FancyBackground.F
 
         FancyBackground
                 .on(view)
-                .batch(5)
                 .animator(new Anim())
                 .listener(this)
                 .interval(3000)
