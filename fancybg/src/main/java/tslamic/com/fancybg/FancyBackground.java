@@ -5,6 +5,9 @@ import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
+import android.os.Looper;
+import android.os.Message;
+import android.text.TextUtils;
 import android.util.TypedValue;
 import android.view.View;
 import android.view.ViewGroup;
@@ -12,6 +15,7 @@ import android.view.ViewGroup;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class FancyBackground {
 
@@ -19,7 +23,7 @@ public class FancyBackground {
 
         void onStarted(FancyBackground bg);
 
-        void onNew(FancyBackground bg, Drawable newDrawable);
+        void onNew(FancyBackground bg, Drawable current);
 
         void onLoopDone(FancyBackground bg);
 
@@ -27,7 +31,7 @@ public class FancyBackground {
 
     }
 
-    public static Builder on(View view) {
+    public static Builder on(final View view) {
         if (view == null) {
             throw new IllegalArgumentException("view is null");
         }
@@ -36,17 +40,19 @@ public class FancyBackground {
 
     public static class Builder {
 
-        private FancyAnimation animation = FancyAnimationHelper.FADE;
-        private int cacheSize = FancyLruCache.DEFAULT_SIZE;
+        private FancyAnimator animation = FancyAnimator.NONE;
+        private FancyCache cache = FancyCache.DEFAULT;
         private FancyScale scale = FancyScale.FIT_XY;
         private FancyListener listener;
+
         private long interval = 3000;
         private boolean loop = true;
         private int[] drawables;
+        private int batch = 1;
 
         private final View view;
 
-        public Builder(View view) {
+        private Builder(View view) {
             this.view = view;
         }
 
@@ -55,7 +61,7 @@ public class FancyBackground {
             return this;
         }
 
-        public Builder animateWith(FancyAnimation animation) {
+        public Builder animator(FancyAnimator animation) {
             this.animation = animation;
             return this;
         }
@@ -66,7 +72,7 @@ public class FancyBackground {
         }
 
         public Builder interval(long millis) {
-            interval = millis;
+            this.interval = millis;
             return this;
         }
 
@@ -80,54 +86,63 @@ public class FancyBackground {
             return this;
         }
 
-        public Builder cache(int bytes) {
-            cacheSize = bytes;
+        public Builder cache(FancyCache cache) {
+            this.cache = cache;
             return this;
         }
 
-        public FancyBackground build() {
+        public Builder batch(int amount) {
+            this.batch = amount;
+            return this;
+        }
+
+        public FancyBackground start() {
             return new FancyBackground(this);
         }
 
     }
 
-    // Publicly available instance variables
-    public final FancyAnimation animation;
+    // Public instance variables
+    public final FancyAnimator animation;
     public final FancyListener listener;
     public final FancyScale scale;
+    public final FancyCache cache;
     public final long interval;
-    public final int cacheSize;
     public final boolean loop;
     public final View view;
+    public final int batch;
 
     // Private data
+    private final AtomicInteger mIndex = new AtomicInteger(0);
+    private final ScheduledExecutorService mExecutor;
     private final BitmapFactory.Options mOptions;
     private final TypedValue mTypedValue;
-
-    private ScheduledExecutorService mExecutor;
-    private FancyImageView mFancyImage;
+    private final Resources mResources;
     private final int[] mDrawables;
-    private FancyLruCache mCache;
-    private int mNextIndex;
+
+    private FancyHandler mHandler;
+    private int mBatchCount;
 
     private FancyBackground(Builder builder) {
         animation = builder.animation;
         listener = builder.listener;
         scale = builder.scale;
         interval = builder.interval;
-        cacheSize = builder.cacheSize;
         loop = builder.loop;
         view = builder.view;
+        batch = builder.batch;
 
-        mDrawables = builder.drawables;
-        mOptions = new BitmapFactory.Options();
-        mTypedValue = new TypedValue();
-
-        if (cacheSize > 0) {
-            mCache = new FancyLruCache(cacheSize);
-        } else if (cacheSize == FancyLruCache.DEFAULT_SIZE) {
-            mCache = new FancyLruCache(view.getContext());
+        if (builder.cache == FancyCache.DEFAULT) {
+            cache = new FancyLruCache(view.getContext());
+        } else {
+            cache = builder.cache;
         }
+
+        mExecutor = Executors.newSingleThreadScheduledExecutor();
+        mOptions = new BitmapFactory.Options();
+        mResources = view.getResources();
+        mTypedValue = new TypedValue();
+        mDrawables = builder.drawables;
 
         view.post(new Runnable() {
             @Override
@@ -139,125 +154,150 @@ public class FancyBackground {
 
     private void init() {
         final ViewGroup group = getViewGroup(view);
-        mFancyImage = new FancyImageView(this, view);
-        group.addView(mFancyImage, 0, view.getLayoutParams());
+
+        final FancyImageView bg = new FancyImageView(this, view);
+        mHandler = new FancyHandler(bg);
+        group.addView(bg, 0, view.getLayoutParams());
+
         start();
     }
 
-    void halt() {
-        shutdownExecutor();
-        mCache.evictAll();
+    private void start() {
+        if (null != listener) {
+            listener.onStarted(this);
+        }
+        mExecutor.scheduleAtFixedRate(new Runnable() {
+            @Override
+            public void run() {
+                updateDrawable();
+            }
+        }, 0, interval, TimeUnit.MILLISECONDS);
+    }
+
+    public void halt() {
+        mExecutor.shutdownNow();
+        cache.clear();
         if (null != listener) {
             listener.onStopped(this);
         }
     }
 
-    private void start() {
-        final Drawable drawable = getNextDrawable();
+    private synchronized void updateDrawable() {
+        if (onUiThread()) {
+            throw new IllegalStateException("sendHandlerUpdate on UI thread");
+        }
+
+        final Drawable drawable = getNext();
         if (null != drawable) {
-            mFancyImage.setImageDrawable(drawable);
+            final Message msg = mHandler.obtainMessage();
+            msg.obj = drawable;
+            msg.sendToTarget();
         }
 
-        if (mDrawables.length > 1) {
-            mExecutor = Executors.newSingleThreadScheduledExecutor();
-            mExecutor.scheduleAtFixedRate(new Runnable() {
-                @Override
-                public void run() {
-                    view.post(new Runnable() {
-                        @Override
-                        public void run() {
-                            animateToNextBitmap();
-                        }
-                    });
-                }
-            }, interval, interval, TimeUnit.MILLISECONDS);
-        }
-
-        if (null != listener) {
-            listener.onStarted(this);
+        if (batch > 1 && mBatchCount == 0) {
+            mBatchCount = batch;
+            runBatchLoad();
+        } else {
+            --mBatchCount;
         }
     }
 
-    private void animateToNextBitmap() {
-        final Drawable drawable = getNextDrawable();
-        if (drawable != null) {
-            if (null != listener) {
-                listener.onNew(this, drawable);
-            }
-            animation.animate(this, mFancyImage, drawable);
+    private void runBatchLoad() {
+        if (onUiThread()) {
+            throw new IllegalStateException("sendHandlerUpdate on UI thread");
         }
+
+        System.out.println("BATCH LOAD");
+        long time = System.currentTimeMillis();
+        for (int i = 1, size = mDrawables.length; i < batch; i++) {
+            final int index = (mIndex.get() + i) % size;
+            final int resource = mDrawables[index];
+            getDrawableBATCHTEST(resource);
+        }
+        System.out.println("batch load time: " + (System.currentTimeMillis()
+                - time));
     }
 
-    private Drawable getNextDrawable() {
+    private Drawable getNext() {
         final int size = mDrawables.length;
-        if (mNextIndex >= size && !loop) {
+
+        if (mIndex.get() >= size && !loop) {
+            mExecutor.shutdownNow();
+            cache.clear();
             if (null != listener) {
                 listener.onLoopDone(this);
             }
-            shutdownExecutor();
             return null;
         }
 
-        final int resource = mDrawables[mNextIndex++ % size];
-        final Resources resources = view.getResources();
-        resources.getValue(resource, mTypedValue, true);
+        final int index = mIndex.getAndIncrement();
+        return getDrawable(mDrawables[index % size]);
+    }
+
+    private Drawable getDrawable(final int resource) {
+        Bitmap bitmap = cache.get(resource);
+        if (bitmap != null) {
+            return new BitmapDrawable(mResources, bitmap);
+        }
 
         final Drawable drawable;
-        if (isBitmap(mTypedValue)) {
-            drawable = getBitmapDrawable(resources, resource);
+        if (isBitmap(resource)) {
+            bitmap = getBitmap(resource);
+            drawable = new BitmapDrawable(mResources, bitmap);
         } else {
-            drawable = resources.getDrawable(resource);
+            drawable = mResources.getDrawable(resource);
         }
 
         return drawable;
     }
 
-    private Drawable getBitmapDrawable(final Resources resources,
-                                       final int resource) {
-        final boolean hasCache = mCache != null;
-        Bitmap bitmap = null;
-
-        if (hasCache) {
-            bitmap = mCache.get(resource);
+    private void getDrawableBATCHTEST(final int resource) {
+        if (isBitmap(resource)) {
+            getBitmap(resource);
+        } else {
+            mResources.getDrawable(resource);
         }
+    }
+
+    private Bitmap getBitmap(final int resource) {
+        Bitmap bitmap = cache.get(resource);
 
         if (bitmap == null) {
             final int w = view.getMeasuredWidth();
             final int h = view.getMeasuredHeight();
 
             mOptions.inJustDecodeBounds = true;
-            BitmapFactory.decodeResource(resources, resource, mOptions);
+            BitmapFactory.decodeResource(mResources, resource, mOptions);
 
             mOptions.inSampleSize = getSampleSize(mOptions, w, h);
             mOptions.inJustDecodeBounds = false;
 
-            bitmap = BitmapFactory.decodeResource(resources,
+            bitmap = BitmapFactory.decodeResource(mResources,
                     resource, mOptions);
-
-            if (hasCache) {
-                mCache.put(resource, bitmap);
-            }
+            cache.put(resource, bitmap);
         }
 
-        return new BitmapDrawable(resources, bitmap);
+        return bitmap;
     }
 
-    private void shutdownExecutor() {
-        if (null != mExecutor) {
-            mExecutor.shutdownNow();
-            mExecutor = null;
-        }
-    }
-
-    private static boolean isBitmap(final TypedValue value) {
+    private boolean isBitmap(final int resource) {
         boolean isBitmap = false;
 
-        if (TypedValue.TYPE_STRING == value.type) {
-            final String file = value.string.toString();
+        mResources.getValue(resource, mTypedValue, true);
+        if (TypedValue.TYPE_STRING == mTypedValue.type) {
+            final String file = mTypedValue.string.toString();
+            if (TextUtils.isEmpty(file)) {
+                throw new IllegalArgumentException("not a Drawable: " +
+                        mTypedValue.resourceId);
+            }
             isBitmap = !file.endsWith(".xml");
         }
 
         return isBitmap;
+    }
+
+    private static boolean onUiThread() {
+        return Looper.myLooper() == Looper.getMainLooper();
     }
 
     private static int getSampleSize(BitmapFactory.Options options,

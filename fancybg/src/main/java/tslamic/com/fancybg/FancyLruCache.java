@@ -11,28 +11,19 @@ import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
-class FancyLruCache {
-
-    public static final int DEFAULT_SIZE = 0;
-    public static final int NO_CACHE = -1;
+class FancyLruCache implements FancyCache {
 
     private final LinkedHashMap<Integer, Bitmap> mCache;
     private final int mMaxSize;
     private int mSize;
 
     FancyLruCache(Context context) {
-        this(getDefaultCacheSize(context));
-    }
-
-    FancyLruCache(int maxSize) {
-        if (maxSize <= 0) {
-            throw new IllegalArgumentException("illegal cache size: " + maxSize);
-        }
         mCache = new LinkedHashMap<Integer, Bitmap>();
-        mMaxSize = maxSize;
+        mMaxSize = getDefaultCacheSize(context);
     }
 
-    boolean put(int key, Bitmap bitmap) {
+    @Override
+    public boolean put(int key, Bitmap bitmap) {
         if (bitmap == null) {
             throw new IllegalArgumentException("trying to cache null bitmap");
         }
@@ -45,29 +36,34 @@ class FancyLruCache {
         while (mSize + requiredSize > mMaxSize && !mCache.isEmpty()) {
             evictNextFrom(mCache.entrySet().iterator());
         }
-
         mCache.put(key, bitmap);
         mSize += requiredSize;
+
         return true;
     }
 
-    Bitmap get(int key) {
+    @Override
+    public Bitmap get(int key) {
         return mCache.get(key);
     }
 
-    private void evictNextFrom(Iterator<Map.Entry<Integer, Bitmap>> iterator) {
-        final Bitmap bitmap = iterator.next().getValue();
-        mSize -= getBitmapSize(bitmap);
-        bitmap.recycle();
-        iterator.remove();
-    }
-
-    void evictAll() {
+    @Override
+    public void clear() {
         final Iterator<Map.Entry<Integer, Bitmap>> iterator =
                 mCache.entrySet().iterator();
         while (iterator.hasNext()) {
             evictNextFrom(iterator);
         }
+    }
+
+    /*
+    * Assumes the iterator contains at least one element.
+    */
+    private void evictNextFrom(Iterator<Map.Entry<Integer, Bitmap>> iterator) {
+        final Bitmap bitmap = iterator.next().getValue();
+        mSize -= getBitmapSize(bitmap);
+        bitmap.recycle();
+        iterator.remove();
     }
 
     private static int getDefaultCacheSize(Context context) {
