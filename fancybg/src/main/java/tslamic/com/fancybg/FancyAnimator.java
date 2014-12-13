@@ -4,7 +4,7 @@ import android.graphics.drawable.Drawable;
 import android.widget.ImageView;
 
 /**
- * Defines the transition of background drawables.
+ * Defines the transition of FancyBackground drawables.
  */
 public interface FancyAnimator {
 

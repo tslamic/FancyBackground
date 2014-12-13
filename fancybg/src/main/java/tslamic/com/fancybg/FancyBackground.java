@@ -6,6 +6,7 @@ import android.graphics.BitmapFactory;
 import android.graphics.Matrix;
 import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
+import android.os.Looper;
 import android.os.Message;
 import android.text.TextUtils;
 import android.util.TypedValue;
@@ -52,7 +53,6 @@ public class FancyBackground {
      *
      * @param view a view where FancyBackground will be showing Drawables.
      * @return FancyBackground Builder instance.
-     * @throws NullPointerException if view is null.
      */
     public static Builder on(final View view) {
         if (view == null) {
@@ -84,10 +84,6 @@ public class FancyBackground {
          * @param drawables Drawable resources.
          */
         public Builder set(int... drawables) {
-            if (null == drawables || drawables.length < 2) {
-                throw new IllegalArgumentException("at least two drawables " +
-                        "required");
-            }
             this.drawables = drawables;
             return this;
         }
@@ -138,7 +134,7 @@ public class FancyBackground {
          */
         public Builder scale(ImageView.ScaleType scale) {
             if (scale == null) {
-                throw new IllegalArgumentException("scale cannot be null");
+                throw new IllegalArgumentException("scale is null");
             }
             this.scale = scale;
             return this;
@@ -167,31 +163,38 @@ public class FancyBackground {
         /**
          * Completes the building process and returns a new FancyBackground
          * instance.
+         *
+         * @throws IllegalStateException if the drawables have not been set
+         *                               or there are less than two.
          */
         public FancyBackground start() {
+            if (null == drawables || drawables.length < 2) {
+                throw new IllegalStateException("at least two drawables required");
+            }
             return new FancyBackground(this);
         }
 
     }
 
     // Public instance variables
+
     public final ImageView.ScaleType scale;
     public final FancyAnimator animator;
     public final FancyListener listener;
     public final FancyCache cache;
     public final long interval;
+    public final Matrix matrix;
     public final boolean loop;
     public final View view;
 
     // Private data
+
     private final AtomicInteger mIndex = new AtomicInteger(0);
     private final ScheduledExecutorService mExecutor;
     private final BitmapFactory.Options mOptions;
     private final TypedValue mTypedValue;
     private final Resources mResources;
     private final int[] mDrawables;
-    private final Matrix mMatrix;
-
     private FancyHandler mHandler;
 
     private FancyBackground(Builder builder) {
@@ -213,7 +216,7 @@ public class FancyBackground {
         mResources = view.getResources();
         mTypedValue = new TypedValue();
         mDrawables = builder.drawables;
-        mMatrix = builder.matrix;
+        matrix = builder.matrix;
 
         view.post(new Runnable() {
             @Override
@@ -228,8 +231,8 @@ public class FancyBackground {
 
         final FancyImageView bg = new FancyImageView(this, view);
         bg.setScaleType(scale);
-        if (mMatrix != null) {
-            bg.setImageMatrix(mMatrix);
+        if (matrix != null) {
+            bg.setImageMatrix(matrix);
         }
         mHandler = new FancyHandler(bg);
         group.addView(bg, 0, view.getLayoutParams());
@@ -275,6 +278,10 @@ public class FancyBackground {
     }
 
     private Drawable getNext() {
+        if (Looper.getMainLooper() == Looper.myLooper()) {
+            throw new AssertionError("wtf");
+        }
+
         final Drawable drawable;
 
         final int size = mDrawables.length;

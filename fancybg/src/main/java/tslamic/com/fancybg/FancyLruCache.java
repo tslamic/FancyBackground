@@ -52,6 +52,16 @@ class FancyLruCache implements FancyCache {
     }
 
     @Override
+    public int getMaxSize() {
+        return mMaxSize;
+    }
+
+    @Override
+    public int getSize() {
+        return mSize;
+    }
+
+    @Override
     public void clear() {
         final Iterator<Map.Entry<Integer, Bitmap>> iterator =
                 mCache.entrySet().iterator();

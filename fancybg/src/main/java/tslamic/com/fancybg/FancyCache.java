@@ -13,14 +13,15 @@ import android.graphics.Bitmap;
 public interface FancyCache {
 
     /**
-     * Provides the default FancyBackground cache.
+     * Default FancyBackground cache.
      */
     final FancyCache DEFAULT = null;
 
     /**
-     * Ensures no Bitmap cache is used.
+     * No Bitmap cache.
      */
     final FancyCache NO_CACHE = new FancyCache() {
+
         @Override
         public Bitmap get(int key) {
             return null;
@@ -32,9 +33,20 @@ public interface FancyCache {
         }
 
         @Override
+        public int getMaxSize() {
+            return 0;
+        }
+
+        @Override
+        public int getSize() {
+            return 0;
+        }
+
+        @Override
         public void clear() {
             // Do nothing.
         }
+
     };
 
     /**
@@ -48,6 +60,16 @@ public interface FancyCache {
      * @return true if successfully cached, false otherwise.
      */
     boolean put(int key, Bitmap bitmap);
+
+    /**
+     * Returns this cache max size in bytes.
+     */
+    int getMaxSize();
+
+    /**
+     * Returns this cache current size in bytes.
+     */
+    int getSize();
 
     /**
      * Clears the cache, evicting and recycling the Bitmaps.

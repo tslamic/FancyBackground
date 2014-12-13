@@ -32,7 +32,6 @@ public class MainActivity extends ActionBarActivity implements FancyBackground.F
                 .listener(this)
                 .interval(3000)
                 .set(R.drawable.fancy_bg_0, R.drawable.fancy_bg_1, R.drawable.fancy_bg_2)
-                .loop(false)
                 .start();
     }
 
