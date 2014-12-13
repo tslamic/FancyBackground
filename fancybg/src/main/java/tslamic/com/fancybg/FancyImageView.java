@@ -5,6 +5,9 @@ import android.graphics.drawable.Drawable;
 import android.view.View;
 import android.widget.ImageView;
 
+/**
+ * ImageView responsible for showing FancyBackground drawables.
+ */
 @SuppressLint("ViewConstructor")
 class FancyImageView extends ImageView {
 
@@ -13,10 +16,8 @@ class FancyImageView extends ImageView {
 
     FancyImageView(FancyBackground fancyBackground, View source) {
         super(source.getContext());
-
         mFancyBackground = fancyBackground;
         mSource = source;
-        setScale(fancyBackground.scale);
     }
 
     @Override
@@ -32,9 +33,11 @@ class FancyImageView extends ImageView {
         mFancyBackground.halt();
     }
 
-    void setScale(FancyScale scale) {
-        final ScaleType type = ImageView.ScaleType.valueOf(scale.name());
-        setScaleType(type);
+    private void invokeOnNew() {
+        final FancyBackground.FancyListener listener = mFancyBackground.listener;
+        if (listener != null) {
+            listener.onNew(mFancyBackground);
+        }
     }
 
     void fancyAnimate(Drawable drawable) {
@@ -44,12 +47,7 @@ class FancyImageView extends ImageView {
         } else {
             animator.animate(mFancyBackground, this, drawable);
         }
-
-        final FancyBackground.FancyListener listener =
-                mFancyBackground.listener;
-        if (listener != null) {
-            listener.onNew(mFancyBackground, drawable);
-        }
+        invokeOnNew();
     }
 
 }

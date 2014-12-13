@@ -12,7 +12,8 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
- * Default, in-memory LRU Bitmap cache.
+ * Simple in-memory LRU Bitmap cache. Takes at most 15% of the application
+ * memory.
  */
 class FancyLruCache implements FancyCache {
 
@@ -60,8 +61,8 @@ class FancyLruCache implements FancyCache {
     }
 
     /*
-    * Assumes the iterator contains at least one element.
-    */
+     * Assumes the iterator contains at least one element.
+     */
     private void evictNextFrom(Iterator<Map.Entry<Integer, Bitmap>> iterator) {
         final Bitmap bitmap = iterator.next().getValue();
         mSize -= getBitmapSize(bitmap);

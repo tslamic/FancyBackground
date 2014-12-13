@@ -7,6 +7,9 @@ import android.os.Message;
 
 import java.lang.ref.WeakReference;
 
+/**
+ * Sends the newly loaded Drawable from a worker thread to the UI thread.
+ */
 class FancyHandler extends Handler {
 
     private final WeakReference<FancyImageView> mImageViewRef;
