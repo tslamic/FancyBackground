@@ -52,7 +52,7 @@ public class FancyBackground {
      * Creates the FancyBackground Builder instance.
      *
      * @param view a view where FancyBackground will be showing Drawables.
-     * @return FancyBackground Builder instance.
+     * @return FancyBackground.Builder instance.
      */
     public static Builder on(final View view) {
         if (view == null) {
@@ -84,6 +84,9 @@ public class FancyBackground {
          * @param drawables Drawable resources.
          */
         public Builder set(int... drawables) {
+            if (null == drawables || drawables.length < 2) {
+                throw new IllegalStateException("at least two drawables required");
+            }
             this.drawables = drawables;
             return this;
         }
@@ -163,14 +166,8 @@ public class FancyBackground {
         /**
          * Completes the building process and returns a new FancyBackground
          * instance.
-         *
-         * @throws IllegalStateException if the drawables have not been set
-         *                               or there are less than two.
          */
         public FancyBackground start() {
-            if (null == drawables || drawables.length < 2) {
-                throw new IllegalStateException("at least two drawables required");
-            }
             return new FancyBackground(this);
         }
 
