@@ -6,12 +6,14 @@ import android.graphics.BitmapFactory;
 import android.graphics.Matrix;
 import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
-import android.os.Looper;
 import android.os.Message;
 import android.text.TextUtils;
 import android.util.TypedValue;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.animation.Animation;
+import android.view.animation.AnimationUtils;
+import android.widget.ImageSwitcher;
 import android.widget.ImageView;
 
 import java.util.concurrent.Executors;
@@ -37,7 +39,8 @@ public class FancyBackground {
         void onNew(FancyBackground bg);
 
         /**
-         * Invoked when all the Drawables have been shown.
+         * Invoked when all the Drawables have been shown and the looping is
+         * complete.
          */
         void onLoopDone(FancyBackground bg);
 
@@ -49,9 +52,9 @@ public class FancyBackground {
     }
 
     /**
-     * Creates the FancyBackground Builder instance.
+     * Creates a new FancyBackground Builder instance.
      *
-     * @param view a view where FancyBackground will be showing Drawables.
+     * @param view a view where FancyBackground should show Drawables.
      * @return FancyBackground.Builder instance.
      */
     public static Builder on(final View view) {
@@ -64,18 +67,23 @@ public class FancyBackground {
     public static class Builder {
 
         private ImageView.ScaleType scale = ImageView.ScaleType.FIT_XY;
-        private FancyAnimator animator = FancyAnimator.NONE;
-        private FancyCache cache = FancyCache.DEFAULT;
         private FancyListener listener;
+        private Animation outAnimation;
+        private Animation inAnimation;
         private long interval = 3000;
         private boolean loop = true;
+        private FancyCache cache;
         private int[] drawables;
         private Matrix matrix;
 
         private final View view;
 
+        /*
+         * Private constructor. Use "on" static factory method.
+         */
         private Builder(View view) {
             this.view = view;
+            cache = new FancyLruCache(view.getContext());
         }
 
         /**
@@ -91,19 +99,39 @@ public class FancyBackground {
             return this;
         }
 
-        /**
-         * Sets the {@link tslamic.com.fancybg.FancyAnimator}.
-         */
-        public Builder animator(FancyAnimator animator) {
-            this.animator = animator;
+        public Builder inAnimation(Animation animation) {
+            if (null == animation) {
+                throw new IllegalStateException("in animation is null");
+            }
+            inAnimation = animation;
+            return this;
+        }
+
+        public Builder inAnimation(int animation) {
+            inAnimation = AnimationUtils.loadAnimation(view.getContext(),
+                    animation);
+            return this;
+        }
+
+        public Builder outAnimation(Animation animation) {
+            if (null == animation) {
+                throw new IllegalStateException("out animation is null");
+            }
+            outAnimation = animation;
+            return this;
+        }
+
+        public Builder outAnimation(int animation) {
+            outAnimation = AnimationUtils.loadAnimation(view.getContext(),
+                    animation);
             return this;
         }
 
         /**
-         * Determines if the FancyBackground should loop through the
-         * Drawables or stop when the last one is reached.
+         * Determines if the FancyBackground should continuously loop through
+         * the Drawables or stop after the first one.
          *
-         * @param loop true to loop, false to stop at the last one.
+         * @param loop true to loop, false to stop after the first one
          */
         public Builder loop(boolean loop) {
             this.loop = loop;
@@ -156,7 +184,8 @@ public class FancyBackground {
         }
 
         /**
-         * Sets the {@link tslamic.com.fancybg.FancyCache}.
+         * Sets the {@link tslamic.com.fancybg.FancyCache}. Use null to avoid
+         * caching.
          */
         public Builder cache(FancyCache cache) {
             this.cache = cache;
@@ -173,18 +202,15 @@ public class FancyBackground {
 
     }
 
-    // Public instance variables
-
     public final ImageView.ScaleType scale;
-    public final FancyAnimator animator;
     public final FancyListener listener;
+    public final Animation outAnimation;
+    public final Animation inAnimation;
     public final FancyCache cache;
     public final long interval;
     public final Matrix matrix;
     public final boolean loop;
     public final View view;
-
-    // Private data
 
     private final AtomicInteger mIndex = new AtomicInteger(0);
     private final ScheduledExecutorService mExecutor;
@@ -192,21 +218,21 @@ public class FancyBackground {
     private final TypedValue mTypedValue;
     private final Resources mResources;
     private final int[] mDrawables;
-    private FancyHandler mHandler;
 
+    private ImageSwitcher mSwitcher;
+
+    /*
+     * Private constructor. Use a Builder.
+     */
     private FancyBackground(Builder builder) {
-        animator = builder.animator;
+        outAnimation = builder.outAnimation;
+        inAnimation = builder.inAnimation;
         listener = builder.listener;
-        scale = builder.scale;
         interval = builder.interval;
+        cache = builder.cache;
+        scale = builder.scale;
         loop = builder.loop;
         view = builder.view;
-
-        if (builder.cache == FancyCache.DEFAULT) {
-            cache = new FancyLruCache(view.getContext());
-        } else {
-            cache = builder.cache;
-        }
 
         mExecutor = Executors.newSingleThreadScheduledExecutor();
         mOptions = new BitmapFactory.Options();
@@ -225,15 +251,8 @@ public class FancyBackground {
 
     private void init() {
         final ViewGroup group = getViewGroup(view);
-
-        final FancyImageView bg = new FancyImageView(this, view);
-        bg.setScaleType(scale);
-        if (matrix != null) {
-            bg.setImageMatrix(matrix);
-        }
-        mHandler = new FancyHandler(bg);
-        group.addView(bg, 0, view.getLayoutParams());
-
+        mSwitcher = new FancyImageSwitcher(this);
+        group.addView(mSwitcher, 0, view.getLayoutParams());
         start();
     }
 
@@ -249,13 +268,18 @@ public class FancyBackground {
         }, 0, interval, TimeUnit.MILLISECONDS);
     }
 
+    /**
+     * Stops the loop and releases the cached resources.
+     */
     public void halt() {
         halt(false);
     }
 
     private void halt(boolean isLoopDone) {
         mExecutor.shutdownNow();
-        cache.clear();
+        if (null != cache) {
+            cache.clear();
+        }
         if (null != listener) {
             if (isLoopDone) {
                 listener.onLoopDone(this);
@@ -268,17 +292,13 @@ public class FancyBackground {
     private void updateDrawable() {
         final Drawable drawable = getNext();
         if (null != drawable) {
-            final Message msg = mHandler.obtainMessage();
+            final Message msg = mSwitcher.getHandler().obtainMessage();
             msg.obj = drawable;
             msg.sendToTarget();
         }
     }
 
     private Drawable getNext() {
-        if (Looper.getMainLooper() == Looper.myLooper()) {
-            throw new AssertionError("wtf");
-        }
-
         final Drawable drawable;
 
         final int size = mDrawables.length;
@@ -294,8 +314,13 @@ public class FancyBackground {
     }
 
     private Drawable getDrawable(final int resource) {
-        Bitmap bitmap = cache.get(resource);
-        if (bitmap != null) {
+        Bitmap bitmap = null;
+
+        if (null != cache) {
+            bitmap = cache.get(resource);
+        }
+
+        if (null != bitmap) {
             return new BitmapDrawable(mResources, bitmap);
         }
 
@@ -311,9 +336,14 @@ public class FancyBackground {
     }
 
     private Bitmap getBitmap(final int resource) {
-        Bitmap bitmap = cache.get(resource);
+        final boolean hasCache = null != cache;
+        Bitmap bitmap = null;
 
-        if (bitmap == null) {
+        if (hasCache) {
+            bitmap = cache.get(resource);
+        }
+
+        if (null == bitmap) {
             final int w = view.getMeasuredWidth();
             final int h = view.getMeasuredHeight();
 
@@ -324,7 +354,9 @@ public class FancyBackground {
             mOptions.inJustDecodeBounds = false;
 
             bitmap = BitmapFactory.decodeResource(mResources, resource, mOptions);
-            cache.put(resource, bitmap);
+            if (hasCache) {
+                cache.put(resource, bitmap);
+            }
         }
 
         return bitmap;

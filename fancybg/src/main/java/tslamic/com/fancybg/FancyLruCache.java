@@ -12,7 +12,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
- * Simple in-memory LRU Bitmap cache. Takes at most 15% of the application
+ * Simple in-memory LRU Bitmap cache. Takes ~15% of the application
  * memory.
  */
 class FancyLruCache implements FancyCache {
@@ -26,6 +26,9 @@ class FancyLruCache implements FancyCache {
         mMaxSize = getDefaultCacheSize(context);
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public boolean put(int key, Bitmap bitmap) {
         if (bitmap == null) {
@@ -46,21 +49,34 @@ class FancyLruCache implements FancyCache {
         return true;
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public Bitmap get(int key) {
         return mCache.get(key);
     }
+
+    /**
+     * {@inheritDoc}
+     */
 
     @Override
     public int getMaxSize() {
         return mMaxSize;
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public int getSize() {
         return mSize;
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public void clear() {
         final Iterator<Map.Entry<Integer, Bitmap>> iterator =
@@ -91,7 +107,7 @@ class FancyLruCache implements FancyCache {
             memory = manager.getMemoryClass();
         }
 
-        return 1024 * 1024 * memory / 7;
+        return 1024 * 1024 * memory / 7; // ~15%
     }
 
     @TargetApi(Build.VERSION_CODES.HONEYCOMB)
