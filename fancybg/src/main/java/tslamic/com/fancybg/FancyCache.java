@@ -4,11 +4,7 @@ import android.graphics.Bitmap;
 
 /**
  * A simple caching interface.
- * <p/>
- * By default, FancyBackground implements a simple in-memory LRU cache taking
- * up to 15% per-application memory of the current device.
- *
- * @see tslamic.com.fancybg.FancyLruCache
+ * By default, FancyBackground uses {@link tslamic.com.fancybg.FancyLruCache}.
  */
 public interface FancyCache {
 

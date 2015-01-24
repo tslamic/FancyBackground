@@ -1,6 +1,7 @@
 package tslamic.com.fancybg;
 
 import android.annotation.SuppressLint;
+import android.graphics.Canvas;
 import android.graphics.Matrix;
 import android.graphics.drawable.Drawable;
 import android.os.Handler;
@@ -10,13 +11,17 @@ import android.view.View;
 import android.widget.ImageSwitcher;
 import android.widget.ImageView;
 
+/**
+ * Responsible for animating set Drawables from
+ * {@link tslamic.com.fancybg.FancyBackground}.
+ */
 @SuppressLint("ViewConstructor")
 class FancyImageSwitcher extends ImageSwitcher {
 
     private final FancyBackground mFancyBg;
     private final Handler mHandler;
 
-    FancyImageSwitcher(FancyBackground fancyBg) {
+    FancyImageSwitcher(final FancyBackground fancyBg) {
         super(fancyBg.view.getContext());
 
         mFancyBg = fancyBg;
@@ -36,6 +41,15 @@ class FancyImageSwitcher extends ImageSwitcher {
     }
 
     @Override
+    protected void onDraw(Canvas canvas) {
+        super.onDraw(canvas);
+        final FancyPainter painter = mFancyBg.painter;
+        if (null != painter) {
+            painter.onDraw(mFancyBg, canvas);
+        }
+    }
+
+    @Override
     protected void onDetachedFromWindow() {
         super.onDetachedFromWindow();
         mFancyBg.halt();
@@ -51,7 +65,7 @@ class FancyImageSwitcher extends ImageSwitcher {
     }
 
     @Override
-    public Handler getHandler() {
+    public final Handler getHandler() {
         return mHandler;
     }
 

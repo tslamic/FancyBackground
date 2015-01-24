@@ -12,7 +12,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
- * Simple in-memory LRU Bitmap cache. Takes ~15% of the application
+ * Simple in-memory LRU Bitmap cache. Takes ~20% of the application
  * memory.
  */
 class FancyLruCache implements FancyCache {
@@ -31,7 +31,7 @@ class FancyLruCache implements FancyCache {
      */
     @Override
     public boolean put(int key, Bitmap bitmap) {
-        if (bitmap == null) {
+        if (null == bitmap) {
             throw new IllegalArgumentException("caching null bitmap");
         }
 
@@ -40,8 +40,8 @@ class FancyLruCache implements FancyCache {
             return false;
         }
 
-        while (mSize + requiredSize > mMaxSize && !mCache.isEmpty()) {
-            evictNextFrom(mCache.entrySet().iterator());
+        while (!mCache.isEmpty() && (mSize + requiredSize) > mMaxSize) {
+            evict(false);
         }
         mCache.put(key, bitmap);
         mSize += requiredSize;
@@ -79,17 +79,23 @@ class FancyLruCache implements FancyCache {
      */
     @Override
     public void clear() {
+        evict(true);
+    }
+
+    private void evict(final boolean all) {
         final Iterator<Map.Entry<Integer, Bitmap>> iterator =
                 mCache.entrySet().iterator();
-        while (iterator.hasNext()) {
-            evictNextFrom(iterator);
+        if (iterator.hasNext()) {
+            evictBitmap(iterator);
+        }
+        if (all) {
+            while (iterator.hasNext()) {
+                evictBitmap(iterator);
+            }
         }
     }
 
-    /*
-     * Assumes the iterator contains at least one element.
-     */
-    private void evictNextFrom(Iterator<Map.Entry<Integer, Bitmap>> iterator) {
+    private void evictBitmap(Iterator<Map.Entry<Integer, Bitmap>> iterator) {
         final Bitmap bitmap = iterator.next().getValue();
         mSize -= getBitmapSize(bitmap);
         bitmap.recycle();
@@ -107,7 +113,7 @@ class FancyLruCache implements FancyCache {
             memory = manager.getMemoryClass();
         }
 
-        return 1024 * 1024 * memory / 7; // ~15%
+        return 1024 * 1024 * memory / 5; // ~20% of available memory
     }
 
     @TargetApi(Build.VERSION_CODES.HONEYCOMB)

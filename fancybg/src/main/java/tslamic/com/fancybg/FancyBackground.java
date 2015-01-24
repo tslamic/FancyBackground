@@ -19,7 +19,6 @@ import android.widget.ImageView;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
 
 public class FancyBackground {
 
@@ -29,61 +28,66 @@ public class FancyBackground {
     public interface FancyListener {
 
         /**
-         * Invoked when the FancyBackground starts displaying Drawables.
+         * Invoked when the {@link tslamic.com.fancybg.FancyBackground} starts.
          */
         void onStarted(FancyBackground bg);
 
         /**
-         * Invoked every time a new Drawable is loaded.
+         * Invoked when a new Drawable is loaded.
          */
         void onNew(FancyBackground bg);
 
         /**
-         * Invoked when all the Drawables have been shown and the looping is
-         * complete.
+         * Invoked if looping is set to false and the first loop through
+         * the set Drawables is complete.
          */
         void onLoopDone(FancyBackground bg);
 
         /**
-         * Invoked when FancyBackground is stopped.
+         * Invoked when the {@link tslamic.com.fancybg.FancyBackground}
+         * is stopped.
          */
         void onStopped(FancyBackground bg);
 
     }
 
     /**
-     * Creates a new FancyBackground Builder instance.
+     * Creates a new {@link tslamic.com.fancybg.FancyBackground.Builder}
+     * instance.
      *
-     * @param view a view where FancyBackground should show Drawables.
-     * @return FancyBackground.Builder instance.
+     * @param view a view where {@link tslamic.com.fancybg.FancyBackground}
+     *             should show Drawables.
+     * @return {@link tslamic.com.fancybg.FancyBackground.Builder} instance.
      */
     public static Builder on(final View view) {
-        if (view == null) {
-            throw new NullPointerException("view is null");
+        if (null == view) {
+            throw new IllegalArgumentException("view is null");
         }
         return new Builder(view);
     }
 
     public static class Builder {
 
-        private ImageView.ScaleType scale = ImageView.ScaleType.FIT_XY;
-        private FancyListener listener;
-        private Animation outAnimation;
-        private Animation inAnimation;
-        private long interval = 3000;
-        private boolean loop = true;
-        private FancyCache cache;
-        private int[] drawables;
-        private Matrix matrix;
+        private final View mView;
 
-        private final View view;
+        private ImageView.ScaleType mScale = ImageView.ScaleType.FIT_XY;
+        private FancyListener mListener;
+        private Animation mOutAnimation;
+        private Animation mInAnimation;
+        private FancyPainter mPainter;
+        private long mInterval = 3000;
+        private boolean mLoop = true;
+        private FancyCache mCache;
+        private int[] mDrawables;
+        private Matrix mMatrix;
 
         /*
-         * Private constructor. Use "on" static factory method.
+         * Private constructor. Use "on" static factory method to create an
+         * instance.
          */
-        private Builder(View view) {
-            this.view = view;
-            cache = new FancyLruCache(view.getContext());
+        private Builder(final View view) {
+            mView = view;
+            mCache = new FancyLruCache(view.getContext());
         }
 
         /**
@@ -91,39 +95,58 @@ public class FancyBackground {
          *
          * @param drawables Drawable resources.
          */
-        public Builder set(int... drawables) {
-            if (null == drawables || drawables.length < 2) {
-                throw new IllegalStateException("at least two drawables required");
-            }
-            this.drawables = drawables;
+        public Builder set(final int... drawables) {
+            mDrawables = drawables;
             return this;
         }
 
-        public Builder inAnimation(Animation animation) {
+        /**
+         * Specifies the animation used to animate a View that enters the
+         * screen.
+         */
+        public Builder inAnimation(final Animation animation) {
             if (null == animation) {
                 throw new IllegalStateException("in animation is null");
             }
-            inAnimation = animation;
+            mInAnimation = animation;
             return this;
         }
 
-        public Builder inAnimation(int animation) {
-            inAnimation = AnimationUtils.loadAnimation(view.getContext(),
+        /**
+         * Specifies the animation used to animate a View that enters the
+         * screen.
+         */
+        public Builder inAnimation(final int animation) {
+            mInAnimation = AnimationUtils.loadAnimation(mView.getContext(),
                     animation);
             return this;
         }
 
-        public Builder outAnimation(Animation animation) {
+        /**
+         * Specifies the animation used to animate a View that exit the screen.
+         */
+        public Builder outAnimation(final Animation animation) {
             if (null == animation) {
                 throw new IllegalStateException("out animation is null");
             }
-            outAnimation = animation;
+            mOutAnimation = animation;
             return this;
         }
 
-        public Builder outAnimation(int animation) {
-            outAnimation = AnimationUtils.loadAnimation(view.getContext(),
+        /**
+         * Specifies the animation used to animate a View that exit the screen.
+         */
+        public Builder outAnimation(final int animation) {
+            mOutAnimation = AnimationUtils.loadAnimation(mView.getContext(),
                     animation);
+            return this;
+        }
+
+        /**
+         * Sets the {@link tslamic.com.fancybg.FancyPainter}.
+         */
+        public Builder painter(final FancyPainter painter) {
+            mPainter = painter;
             return this;
         }
 
@@ -133,29 +156,29 @@ public class FancyBackground {
          *
          * @param loop true to loop, false to stop after the first one
          */
-        public Builder loop(boolean loop) {
-            this.loop = loop;
+        public Builder loop(final boolean loop) {
+            mLoop = loop;
             return this;
         }
 
         /**
-         * Sets the millisecond interval a Drawable will be displayed for.
+         * Sets the millisecond mInterval a Drawable will be displayed for.
          *
-         * @param millis millisecond interval.
+         * @param millis millisecond mInterval.
          */
-        public Builder interval(long millis) {
+        public Builder interval(final long millis) {
             if (millis < 0) {
                 throw new IllegalArgumentException("negative interval");
             }
-            this.interval = millis;
+            mInterval = millis;
             return this;
         }
 
         /**
          * Sets the {@link tslamic.com.fancybg.FancyBackground.FancyListener}.
          */
-        public Builder listener(FancyListener listener) {
-            this.listener = listener;
+        public Builder listener(final FancyListener listener) {
+            mListener = listener;
             return this;
         }
 
@@ -163,11 +186,11 @@ public class FancyBackground {
          * Controls how the Drawables should be resized or moved to match the
          * size of the view FancyBackground will be animating on.
          */
-        public Builder scale(ImageView.ScaleType scale) {
-            if (scale == null) {
+        public Builder scale(final ImageView.ScaleType scale) {
+            if (null == scale) {
                 throw new IllegalArgumentException("scale is null");
             }
-            this.scale = scale;
+            mScale = scale;
             return this;
         }
 
@@ -177,9 +200,12 @@ public class FancyBackground {
          *
          * @param matrix a 3x3 matrix for transforming coordinates.
          */
-        public Builder scale(Matrix matrix) {
-            this.scale = ImageView.ScaleType.MATRIX;
-            this.matrix = matrix;
+        public Builder scale(final Matrix matrix) {
+            if (null == matrix) {
+                throw new IllegalArgumentException("matrix is null");
+            }
+            mScale = ImageView.ScaleType.MATRIX;
+            mMatrix = matrix;
             return this;
         }
 
@@ -187,8 +213,8 @@ public class FancyBackground {
          * Sets the {@link tslamic.com.fancybg.FancyCache}. Use null to avoid
          * caching.
          */
-        public Builder cache(FancyCache cache) {
-            this.cache = cache;
+        public Builder cache(final FancyCache cache) {
+            mCache = cache;
             return this;
         }
 
@@ -197,6 +223,9 @@ public class FancyBackground {
          * instance.
          */
         public FancyBackground start() {
+            if (null == mDrawables || mDrawables.length < 2) {
+                throw new IllegalStateException("at least two drawables required");
+            }
             return new FancyBackground(this);
         }
 
@@ -206,13 +235,14 @@ public class FancyBackground {
     public final FancyListener listener;
     public final Animation outAnimation;
     public final Animation inAnimation;
+    public final FancyPainter painter;
     public final FancyCache cache;
     public final long interval;
     public final Matrix matrix;
     public final boolean loop;
     public final View view;
 
-    private final AtomicInteger mIndex = new AtomicInteger(0);
+    //private final AtomicInteger mIndex = new AtomicInteger(0);
     private final ScheduledExecutorService mExecutor;
     private final BitmapFactory.Options mOptions;
     private final TypedValue mTypedValue;
@@ -220,26 +250,28 @@ public class FancyBackground {
     private final int[] mDrawables;
 
     private ImageSwitcher mSwitcher;
+    private int mIndex;
 
     /*
-     * Private constructor. Use a Builder.
+     * Private constructor. Use a Builder to create an instance.
      */
     private FancyBackground(Builder builder) {
-        outAnimation = builder.outAnimation;
-        inAnimation = builder.inAnimation;
-        listener = builder.listener;
-        interval = builder.interval;
-        cache = builder.cache;
-        scale = builder.scale;
-        loop = builder.loop;
-        view = builder.view;
+        outAnimation = builder.mOutAnimation;
+        inAnimation = builder.mInAnimation;
+        listener = builder.mListener;
+        interval = builder.mInterval;
+        painter = builder.mPainter;
+        cache = builder.mCache;
+        scale = builder.mScale;
+        loop = builder.mLoop;
+        view = builder.mView;
 
         mExecutor = Executors.newSingleThreadScheduledExecutor();
         mOptions = new BitmapFactory.Options();
         mResources = view.getResources();
         mTypedValue = new TypedValue();
-        mDrawables = builder.drawables;
-        matrix = builder.matrix;
+        mDrawables = builder.mDrawables;
+        matrix = builder.mMatrix;
 
         view.post(new Runnable() {
             @Override
@@ -249,6 +281,10 @@ public class FancyBackground {
         });
     }
 
+    /*
+     * Initializes this FancyBackground. Invoked after the source view has been
+     * measured.
+     */
     private void init() {
         final ViewGroup group = getViewGroup(view);
         mSwitcher = new FancyImageSwitcher(this);
@@ -269,7 +305,29 @@ public class FancyBackground {
     }
 
     /**
-     * Stops the loop and releases the cached resources.
+     * Returns the index of currently shown Drawable resource.
+     *
+     * @return the index of currently shown Drawable resource.
+     */
+    public final int getCurrentDrawableIndex() {
+        /*
+         * Because the mIndex++ is used in the getNext() method,
+         * the current index is one less than mIndex.
+         */
+        return mIndex - 1;
+    }
+
+    /**
+     * Returns the number of set Drawables.
+     *
+     * @return the number of set Drawables.
+     */
+    public final int getDrawablesCount() {
+        return mDrawables.length;
+    }
+
+    /**
+     * Stops the looping and releases the cached resources, if any.
      */
     public void halt() {
         halt(false);
@@ -302,12 +360,14 @@ public class FancyBackground {
         final Drawable drawable;
 
         final int size = mDrawables.length;
-        if (mIndex.get() >= size && !loop) {
+        //if (mIndex.get() >= size && !loop) {
+        if (mIndex >= size && !loop) {
             drawable = null;
             halt(true);
         } else {
-            final int index = mIndex.getAndIncrement();
-            drawable = getDrawable(mDrawables[index % size]);
+            //final int index = mIndex.getAndIncrement();
+            //drawable = getDrawable(mDrawables[index % size]);
+            drawable = getDrawable(mDrawables[mIndex++ % size]);
         }
 
         return drawable;
@@ -336,7 +396,7 @@ public class FancyBackground {
     }
 
     private Bitmap getBitmap(final int resource) {
-        final boolean hasCache = null != cache;
+        final boolean hasCache = (null != cache);
         Bitmap bitmap = null;
 
         if (hasCache) {
@@ -369,7 +429,7 @@ public class FancyBackground {
         if (TypedValue.TYPE_STRING == mTypedValue.type) {
             final String file = mTypedValue.string.toString();
             if (TextUtils.isEmpty(file)) {
-                throw new IllegalArgumentException("not a Drawable: " +
+                throw new IllegalArgumentException("not a Drawable id: " +
                         mTypedValue.resourceId);
             }
             isBitmap = !file.endsWith(".xml");
