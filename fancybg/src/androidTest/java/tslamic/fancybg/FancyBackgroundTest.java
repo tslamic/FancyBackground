@@ -1,4 +1,4 @@
-package tslamic.com.fancybg;
+package tslamic.fancybg;
 
 import android.os.Looper;
 import android.test.AndroidTestCase;

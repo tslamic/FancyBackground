@@ -6,7 +6,7 @@ android {
     buildToolsVersion "19.1.0"
 
     defaultConfig {
-        applicationId "tslamic.com.fancybg"
+        applicationId "tslamic.fancybg"
         minSdkVersion 8
         targetSdkVersion 19
         versionCode 1

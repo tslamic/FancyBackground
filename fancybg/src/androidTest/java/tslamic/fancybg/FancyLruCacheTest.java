@@ -1,4 +1,4 @@
-package tslamic.com.fancybg;
+package tslamic.fancybg;
 
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;

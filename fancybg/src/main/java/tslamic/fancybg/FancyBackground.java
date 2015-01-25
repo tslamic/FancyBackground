@@ -1,4 +1,4 @@
-package tslamic.com.fancybg;
+package tslamic.fancybg;
 
 import android.content.res.Resources;
 import android.graphics.Bitmap;
@@ -28,7 +28,7 @@ public class FancyBackground {
     public interface FancyListener {
 
         /**
-         * Invoked when the {@link tslamic.com.fancybg.FancyBackground} starts.
+         * Invoked when the {@link tslamic.fancybg.FancyBackground} starts.
          */
         void onStarted(FancyBackground bg);
 
@@ -44,7 +44,7 @@ public class FancyBackground {
         void onLoopDone(FancyBackground bg);
 
         /**
-         * Invoked when the {@link tslamic.com.fancybg.FancyBackground}
+         * Invoked when the {@link tslamic.fancybg.FancyBackground}
          * is stopped.
          */
         void onStopped(FancyBackground bg);
@@ -52,12 +52,12 @@ public class FancyBackground {
     }
 
     /**
-     * Creates a new {@link tslamic.com.fancybg.FancyBackground.Builder}
+     * Creates a new {@link tslamic.fancybg.FancyBackground.Builder}
      * instance.
      *
-     * @param view a view where {@link tslamic.com.fancybg.FancyBackground}
+     * @param view a view where {@link tslamic.fancybg.FancyBackground}
      *             should show Drawables.
-     * @return {@link tslamic.com.fancybg.FancyBackground.Builder} instance.
+     * @return {@link tslamic.fancybg.FancyBackground.Builder} instance.
      */
     public static Builder on(final View view) {
         if (null == view) {
@@ -166,7 +166,7 @@ public class FancyBackground {
         }
 
         /**
-         * Sets the {@link tslamic.com.fancybg.FancyBackground.FancyListener}.
+         * Sets the {@link tslamic.fancybg.FancyBackground.FancyListener}.
          */
         public Builder listener(final FancyListener listener) {
             mListener = listener;
@@ -201,7 +201,7 @@ public class FancyBackground {
         }
 
         /**
-         * Sets the {@link tslamic.com.fancybg.FancyCache}. Use null to disable
+         * Sets the {@link tslamic.fancybg.FancyCache}. Use null to disable
          * caching.
          */
         public Builder cache(final FancyCache cache) {

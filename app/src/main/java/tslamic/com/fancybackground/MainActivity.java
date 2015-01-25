@@ -10,8 +10,8 @@ import android.view.animation.AnimationSet;
 import android.view.animation.ScaleAnimation;
 import android.widget.ImageView;
 
-import tslamic.com.fancybg.FancyBackground;
-import tslamic.com.fancybg.FancyLruCache;
+import tslamic.fancybg.FancyBackground;
+import tslamic.fancybg.FancyLruCache;
 
 
 public class MainActivity extends ActionBarActivity implements FancyBackground.FancyListener {

@@ -1,4 +1,4 @@
-package tslamic.com.fancybg;
+package tslamic.fancybg;
 
 import android.annotation.SuppressLint;
 import android.graphics.Matrix;
@@ -12,7 +12,7 @@ import android.widget.ImageView;
 
 /**
  * Responsible for animating set Drawables from
- * {@link tslamic.com.fancybg.FancyBackground}.
+ * {@link tslamic.fancybg.FancyBackground}.
  */
 @SuppressLint("ViewConstructor")
 class FancyImageSwitcher extends ImageSwitcher {

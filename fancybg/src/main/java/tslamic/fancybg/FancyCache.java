@@ -1,10 +1,10 @@
-package tslamic.com.fancybg;
+package tslamic.fancybg;
 
 import android.graphics.Bitmap;
 
 /**
  * A simple caching interface.
- * By default, FancyBackground uses {@link tslamic.com.fancybg.FancyLruCache}.
+ * By default, FancyBackground uses {@link tslamic.fancybg.FancyLruCache}.
  */
 public interface FancyCache {
 
