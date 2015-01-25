@@ -12,18 +12,36 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
- * Simple in-memory LRU Bitmap cache. Takes ~20% of the application
- * memory.
+ * Simple in-memory LRU Bitmap cache.
  */
-class FancyLruCache implements FancyCache {
+public class FancyLruCache implements FancyCache {
+
+    private static final float DEFAULT_CACHE_PERCENTAGE = .25f;
 
     private final LinkedHashMap<Integer, Bitmap> mCache;
     private final int mMaxSize;
     private int mSize;
 
-    FancyLruCache(Context context) {
+    /**
+     * Constructs a new instance targeting ~25% of the available heap.
+     */
+    public FancyLruCache(Context context) {
+        this(context, DEFAULT_CACHE_PERCENTAGE);
+    }
+
+    /**
+     * Constructs a new instance.
+     *
+     * @param cachePercentage value between 0.0 and 0.8 denoting the
+     *                        percentage of available heap to target as cache.
+     */
+    public FancyLruCache(Context context, float cachePercentage) {
+        if (cachePercentage < 0.0 || cachePercentage > 0.8) {
+            throw new IllegalArgumentException("cache percentage must be " +
+                    "between 0.0 and 0.8 [0-80%)");
+        }
         mCache = new LinkedHashMap<Integer, Bitmap>();
-        mMaxSize = getDefaultCacheSize(context);
+        mMaxSize = getDefaultCacheSize(context, cachePercentage);
     }
 
     /**
@@ -102,7 +120,7 @@ class FancyLruCache implements FancyCache {
         iterator.remove();
     }
 
-    private static int getDefaultCacheSize(Context context) {
+    private static int getDefaultCacheSize(Context context, float percent) {
         final ActivityManager manager = (ActivityManager) context
                 .getSystemService(Context.ACTIVITY_SERVICE);
 
@@ -113,7 +131,7 @@ class FancyLruCache implements FancyCache {
             memory = manager.getMemoryClass();
         }
 
-        return 1024 * 1024 * memory / 5; // ~20% of available memory
+        return (int) ((1024 * 1024 * memory) * percent);
     }
 
     @TargetApi(Build.VERSION_CODES.HONEYCOMB)

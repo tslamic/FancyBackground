@@ -30,7 +30,7 @@ public class FancyBackgroundTest extends AndroidTestCase {
     public void testViewIsNull() throws Exception {
         NullPointerException npe = null;
         try {
-            FancyBackground.on(null).start();
+            FancyBackground.on(null);
         } catch (NullPointerException e) {
             npe = e;
         }

@@ -1,7 +1,6 @@
 package tslamic.com.fancybg;
 
 import android.annotation.SuppressLint;
-import android.graphics.Canvas;
 import android.graphics.Matrix;
 import android.graphics.drawable.Drawable;
 import android.os.Handler;
@@ -38,15 +37,6 @@ class FancyImageSwitcher extends ImageSwitcher {
         final int w = mFancyBg.view.getMeasuredWidth();
         final int h = mFancyBg.view.getMeasuredHeight();
         setMeasuredDimension(w, h);
-    }
-
-    @Override
-    protected void onDraw(Canvas canvas) {
-        super.onDraw(canvas);
-        final FancyPainter painter = mFancyBg.painter;
-        if (null != painter) {
-            painter.onDraw(mFancyBg, canvas);
-        }
     }
 
     @Override

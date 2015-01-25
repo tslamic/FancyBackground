@@ -74,7 +74,6 @@ public class FancyBackground {
         private FancyListener mListener;
         private Animation mOutAnimation;
         private Animation mInAnimation;
-        private FancyPainter mPainter;
         private long mInterval = 3000;
         private boolean mLoop = true;
         private FancyCache mCache;
@@ -143,14 +142,6 @@ public class FancyBackground {
         }
 
         /**
-         * Sets the {@link tslamic.com.fancybg.FancyPainter}.
-         */
-        public Builder painter(final FancyPainter painter) {
-            mPainter = painter;
-            return this;
-        }
-
-        /**
          * Determines if the FancyBackground should continuously loop through
          * the Drawables or stop after the first one.
          *
@@ -162,7 +153,7 @@ public class FancyBackground {
         }
 
         /**
-         * Sets the millisecond mInterval a Drawable will be displayed for.
+         * Sets the millisecond interval a Drawable will be displayed for.
          *
          * @param millis millisecond mInterval.
          */
@@ -210,7 +201,7 @@ public class FancyBackground {
         }
 
         /**
-         * Sets the {@link tslamic.com.fancybg.FancyCache}. Use null to avoid
+         * Sets the {@link tslamic.com.fancybg.FancyCache}. Use null to disable
          * caching.
          */
         public Builder cache(final FancyCache cache) {
@@ -219,8 +210,8 @@ public class FancyBackground {
         }
 
         /**
-         * Completes the building process and returns a new FancyBackground
-         * instance.
+         * Completes the building process, returns a new FancyBackground
+         * instance and starts the loop.
          */
         public FancyBackground start() {
             if (null == mDrawables || mDrawables.length < 2) {
@@ -235,14 +226,12 @@ public class FancyBackground {
     public final FancyListener listener;
     public final Animation outAnimation;
     public final Animation inAnimation;
-    public final FancyPainter painter;
     public final FancyCache cache;
     public final long interval;
     public final Matrix matrix;
     public final boolean loop;
     public final View view;
 
-    //private final AtomicInteger mIndex = new AtomicInteger(0);
     private final ScheduledExecutorService mExecutor;
     private final BitmapFactory.Options mOptions;
     private final TypedValue mTypedValue;
@@ -250,7 +239,7 @@ public class FancyBackground {
     private final int[] mDrawables;
 
     private ImageSwitcher mSwitcher;
-    private int mIndex;
+    private int mIndex = -1;
 
     /*
      * Private constructor. Use a Builder to create an instance.
@@ -260,7 +249,6 @@ public class FancyBackground {
         inAnimation = builder.mInAnimation;
         listener = builder.mListener;
         interval = builder.mInterval;
-        painter = builder.mPainter;
         cache = builder.mCache;
         scale = builder.mScale;
         loop = builder.mLoop;
@@ -293,7 +281,7 @@ public class FancyBackground {
     }
 
     private void start() {
-        if (null != listener) {
+        if (hasListener()) {
             listener.onStarted(this);
         }
         mExecutor.scheduleAtFixedRate(new Runnable() {
@@ -310,11 +298,7 @@ public class FancyBackground {
      * @return the index of currently shown Drawable resource.
      */
     public final int getCurrentDrawableIndex() {
-        /*
-         * Because the mIndex++ is used in the getNext() method,
-         * the current index is one less than mIndex.
-         */
-        return mIndex - 1;
+        return mIndex;
     }
 
     /**
@@ -335,10 +319,10 @@ public class FancyBackground {
 
     private void halt(boolean isLoopDone) {
         mExecutor.shutdownNow();
-        if (null != cache) {
+        if (hasCache()) {
             cache.clear();
         }
-        if (null != listener) {
+        if (hasListener()) {
             if (isLoopDone) {
                 listener.onLoopDone(this);
             } else {
@@ -356,32 +340,35 @@ public class FancyBackground {
         }
     }
 
+    private int getNextDrawableIndex() {
+        if (++mIndex >= mDrawables.length) {
+            mIndex = loop ? 0 : -1;
+        }
+        return mIndex;
+    }
+
     private Drawable getNext() {
         final Drawable drawable;
 
-        final int size = mDrawables.length;
-        //if (mIndex.get() >= size && !loop) {
-        if (mIndex >= size && !loop) {
+        final int next = getNextDrawableIndex();
+        if (next < 0) {
             drawable = null;
             halt(true);
         } else {
-            //final int index = mIndex.getAndIncrement();
-            //drawable = getDrawable(mDrawables[index % size]);
-            drawable = getDrawable(mDrawables[mIndex++ % size]);
+            drawable = getDrawable(mDrawables[next]);
         }
 
         return drawable;
     }
 
     private Drawable getDrawable(final int resource) {
-        Bitmap bitmap = null;
+        Bitmap bitmap;
 
-        if (null != cache) {
+        if (hasCache()) {
             bitmap = cache.get(resource);
-        }
-
-        if (null != bitmap) {
-            return new BitmapDrawable(mResources, bitmap);
+            if (null != bitmap) {
+                return new BitmapDrawable(mResources, bitmap);
+            }
         }
 
         final Drawable drawable;
@@ -396,9 +383,9 @@ public class FancyBackground {
     }
 
     private Bitmap getBitmap(final int resource) {
-        final boolean hasCache = (null != cache);
         Bitmap bitmap = null;
 
+        final boolean hasCache = hasCache();
         if (hasCache) {
             bitmap = cache.get(resource);
         }
@@ -436,6 +423,14 @@ public class FancyBackground {
         }
 
         return isBitmap;
+    }
+
+    private boolean hasListener() {
+        return null != listener;
+    }
+
+    private boolean hasCache() {
+        return null != cache;
     }
 
     private static int getSampleSize(BitmapFactory.Options options,

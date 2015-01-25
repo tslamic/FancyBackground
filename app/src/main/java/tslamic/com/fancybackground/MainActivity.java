@@ -4,9 +4,14 @@ import android.os.Bundle;
 import android.support.v7.app.ActionBarActivity;
 import android.util.Log;
 import android.view.View;
+import android.view.animation.AlphaAnimation;
+import android.view.animation.Animation;
+import android.view.animation.AnimationSet;
+import android.view.animation.ScaleAnimation;
 import android.widget.ImageView;
 
 import tslamic.com.fancybg.FancyBackground;
+import tslamic.com.fancybg.FancyLruCache;
 
 
 public class MainActivity extends ActionBarActivity implements FancyBackground.FancyListener {
@@ -26,7 +31,7 @@ public class MainActivity extends ActionBarActivity implements FancyBackground.F
                 .set(R.drawable.fancy_bg_0, R.drawable.fancy_bg_1, R.drawable.fancy_bg_2)
                 .inAnimation(android.R.anim.fade_in)
                 .outAnimation(android.R.anim.fade_out)
-                .cache(null)
+                .cache(new FancyLruCache(this, .79f))
                 .scale(ImageView.ScaleType.FIT_XY)
                 .start();
 
@@ -56,6 +61,19 @@ public class MainActivity extends ActionBarActivity implements FancyBackground.F
     @Override
     public void onLoopDone(FancyBackground bg) {
         Log.d(TAG, "onLoopDone");
+    }
+
+    private Animation inAnim() {
+        final AnimationSet set = new AnimationSet(false);
+
+        final Animation fade = new AlphaAnimation(1, 0);
+        set.addAnimation(fade);
+
+        final Animation shrink = new ScaleAnimation(1, 0, 1, 0);
+        set.addAnimation(shrink);
+
+        set.setDuration(500);
+        return set;
     }
 
 }
