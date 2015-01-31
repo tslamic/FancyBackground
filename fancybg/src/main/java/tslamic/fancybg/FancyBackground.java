@@ -331,6 +331,9 @@ public class FancyBackground {
         }
     }
 
+    /*
+     * Runs in a worker thread.
+     */
     private void updateDrawable() {
         final Drawable drawable = getNext();
         if (null != drawable) {
@@ -400,6 +403,9 @@ public class FancyBackground {
             mOptions.inSampleSize = getSampleSize(mOptions, w, h);
             mOptions.inJustDecodeBounds = false;
 
+            /*
+             * Decoding, but not scaling - it's on scale variable to do that.
+             */
             bitmap = BitmapFactory.decodeResource(mResources, resource, mOptions);
             if (hasCache) {
                 cache.put(resource, bitmap);

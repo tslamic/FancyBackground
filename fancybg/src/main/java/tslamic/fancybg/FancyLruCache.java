@@ -16,7 +16,7 @@ import java.util.Map;
  */
 public class FancyLruCache implements FancyCache {
 
-    private static final float DEFAULT_CACHE_PERCENTAGE = .25f;
+    private static final int DEFAULT_CACHE_PERCENTAGE = 25;
 
     private final LinkedHashMap<Integer, Bitmap> mCache;
     private final int mMaxSize;
@@ -32,13 +32,14 @@ public class FancyLruCache implements FancyCache {
     /**
      * Constructs a new instance.
      *
-     * @param cachePercentage value between 0.0 and 0.8 denoting the
-     *                        percentage of available heap to target as cache.
+     * @param cachePercentage integer value between 1 and 80 (inclusive),
+     *                        denoting the percentage of available heap to
+     *                        target as cache.
      */
-    public FancyLruCache(Context context, float cachePercentage) {
-        if (cachePercentage < 0.0 || cachePercentage > 0.8) {
+    public FancyLruCache(Context context, int cachePercentage) {
+        if (cachePercentage < 1 || cachePercentage > 80) {
             throw new IllegalArgumentException("cache percentage must be " +
-                    "between 0.0 and 0.8 [0-80%)");
+                    "between 1 and 80");
         }
         mCache = new LinkedHashMap<Integer, Bitmap>();
         mMaxSize = getDefaultCacheSize(context, cachePercentage);
@@ -120,7 +121,7 @@ public class FancyLruCache implements FancyCache {
         iterator.remove();
     }
 
-    private static int getDefaultCacheSize(Context context, float percent) {
+    private static int getDefaultCacheSize(Context context, int percent) {
         final ActivityManager manager = (ActivityManager) context
                 .getSystemService(Context.ACTIVITY_SERVICE);
 
@@ -131,7 +132,8 @@ public class FancyLruCache implements FancyCache {
             memory = manager.getMemoryClass();
         }
 
-        return (int) ((1024 * 1024 * memory) * percent);
+        final float percentAsFloat = percent / 100.0f;
+        return (int) ((1024 * 1024 * memory) * percentAsFloat);
     }
 
     @TargetApi(Build.VERSION_CODES.HONEYCOMB)
