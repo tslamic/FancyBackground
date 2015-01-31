@@ -105,7 +105,7 @@ public class FancyBackground {
          */
         public Builder inAnimation(final Animation animation) {
             if (null == animation) {
-                throw new IllegalStateException("in animation is null");
+                throw new IllegalArgumentException("in animation is null");
             }
             mInAnimation = animation;
             return this;
@@ -126,7 +126,7 @@ public class FancyBackground {
          */
         public Builder outAnimation(final Animation animation) {
             if (null == animation) {
-                throw new IllegalStateException("out animation is null");
+                throw new IllegalArgumentException("out animation is null");
             }
             mOutAnimation = animation;
             return this;
@@ -215,7 +215,7 @@ public class FancyBackground {
          */
         public FancyBackground start() {
             if (null == mDrawables || mDrawables.length < 2) {
-                throw new IllegalStateException("at least two drawables required");
+                throw new IllegalArgumentException("at least two drawables required");
             }
             return new FancyBackground(this);
         }
