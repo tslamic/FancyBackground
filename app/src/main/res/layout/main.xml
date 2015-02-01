@@ -1,12 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+
 <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
-                android:id="@+id/view"/>
+                android:id="@+id/parent">
 
-    <!--<FrameLayout-->
-    <!--android:id="@+id/colors"-->
-    <!--android:layout_width="200dp"-->
-    <!--android:layout_height="200dp"-->
-    <!--android:layout_centerInParent="true"/>-->
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_alignParentTop="true"
+        android:textSize="32sp"
+        android:layout_marginTop="32dp"
+        android:gravity="center"
+        android:text="The Fancy Background App"/>
 
-    <!--</RelativeLayout>-->
+    <LinearLayout
+        android:id="@+id/child"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_centerInParent="true"
+        android:orientation="vertical"
+        android:padding="16dp">
+
+        <EditText
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Username"
+            android:layout_marginBottom="8dp"/>
+
+        <EditText
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Password"
+            android:layout_marginBottom="8dp"/>
+
+        <Button
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Login"/>
+
+    </LinearLayout>
+
+</RelativeLayout>

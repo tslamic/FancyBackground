@@ -22,6 +22,8 @@ import java.util.concurrent.TimeUnit;
 
 public class FancyBackground {
 
+    private static final int PRELOAD_THRESHOLD = 500;
+
     /**
      * Listens to FancyBackground events.
      */
@@ -214,6 +216,10 @@ public class FancyBackground {
          * instance and starts the loop.
          */
         public FancyBackground start() {
+            /*
+             * The user might not use the set method - make sure the
+             * drawables are valid.
+             */
             if (null == mDrawables || mDrawables.length < 2) {
                 throw new IllegalArgumentException("at least two drawables required");
             }
@@ -270,8 +276,8 @@ public class FancyBackground {
     }
 
     /*
-     * Initializes this FancyBackground. Invoked after the source view has been
-     * measured.
+     * Initializes this FancyBackground. Invoked sometime after the source view
+     * has been measured.
      */
     private void init() {
         final ViewGroup group = getViewGroup(view);
@@ -343,25 +349,51 @@ public class FancyBackground {
         }
     }
 
-    private int getNextDrawableIndex() {
-        if (++mIndex >= mDrawables.length) {
-            mIndex = loop ? 0 : -1;
+    private int getNextDrawableIndex(final int current) {
+        int next = current + 1;
+
+        if (next >= mDrawables.length) {
+            next = loop ? 0 : -1;
         }
-        return mIndex;
+
+        return next;
     }
 
     private Drawable getNext() {
         final Drawable drawable;
 
-        final int next = getNextDrawableIndex();
-        if (next < 0) {
+        mIndex = getNextDrawableIndex(mIndex);
+        if (mIndex < 0) {
             drawable = null;
             halt(true);
         } else {
-            drawable = getDrawable(mDrawables[next]);
+            drawable = getDrawable(mDrawables[mIndex]);
+        }
+
+        if (hasCache() && interval > PRELOAD_THRESHOLD) {
+            final int next = getNextDrawableIndex(mIndex);
+            if (next > 0) {
+                preloadNext(next);
+            }
         }
 
         return drawable;
+    }
+
+    /*
+     * Tries to preload the next image by loading and putting it in the cache.
+     * Assumes the cache is present.
+     */
+    private void preloadNext(final int next) {
+        final int resource = mDrawables[next];
+        if (isBitmap(resource)) {
+            mExecutor.execute(new Runnable() {
+                @Override
+                public void run() {
+                    getBitmap(resource);
+                }
+            });
+        }
     }
 
     private Drawable getDrawable(final int resource) {
@@ -385,7 +417,7 @@ public class FancyBackground {
         return drawable;
     }
 
-    private Bitmap getBitmap(final int resource) {
+    private synchronized Bitmap getBitmap(final int resource) {
         Bitmap bitmap = null;
 
         final boolean hasCache = hasCache();
@@ -405,9 +437,18 @@ public class FancyBackground {
 
             /*
              * Decoding, but not scaling - it's on scale variable to do that.
+             * If OOM error is thrown, try to recover by clearing the cache.
              */
-            bitmap = BitmapFactory.decodeResource(mResources, resource, mOptions);
-            if (hasCache) {
+            try {
+                bitmap = BitmapFactory.decodeResource(mResources, resource, mOptions);
+            } catch (OutOfMemoryError oom) {
+                if (hasCache) {
+                    cache.clear();
+                    bitmap = BitmapFactory.decodeResource(mResources, resource, mOptions);
+                }
+            }
+
+            if (null != bitmap && hasCache) {
                 cache.put(resource, bitmap);
             }
         }
@@ -415,7 +456,7 @@ public class FancyBackground {
         return bitmap;
     }
 
-    private boolean isBitmap(final int resource) {
+    private synchronized boolean isBitmap(final int resource) {
         boolean isBitmap = false;
 
         mResources.getValue(resource, mTypedValue, true);
@@ -443,18 +484,21 @@ public class FancyBackground {
                                      int reqWidth, int reqHeight) {
         final int height = options.outHeight;
         final int width = options.outWidth;
+        int sampleSize = 1;
 
-        int inSampleSize = 1;
         if (height > reqHeight || width > reqWidth) {
-            final int halfHeight = height / 2;
-            final int halfWidth = width / 2;
-            while ((halfHeight / inSampleSize) > reqHeight && (halfWidth /
-                    inSampleSize) > reqWidth) {
-                inSampleSize *= 2;
+            if (reqHeight == 0) {
+                sampleSize = (int) ((float) width / (float) reqWidth);
+            } else if (reqWidth == 0) {
+                sampleSize = (int) ((float) height / (float) reqHeight);
+            } else {
+                final int wSample = (int) ((float) width / (float) reqWidth);
+                final int hSample = (int) ((float) height / (float) reqHeight);
+                sampleSize = Math.max(wSample, hSample);
             }
         }
 
-        return inSampleSize;
+        return sampleSize;
     }
 
     private static ViewGroup getViewGroup(View source) {
