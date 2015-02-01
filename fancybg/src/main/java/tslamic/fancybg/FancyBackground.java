@@ -22,8 +22,6 @@ import java.util.concurrent.TimeUnit;
 
 public class FancyBackground {
 
-    private static final int PRELOAD_THRESHOLD = 500;
-
     /**
      * Listens to FancyBackground events.
      */
@@ -52,6 +50,12 @@ public class FancyBackground {
         void onStopped(FancyBackground bg);
 
     }
+
+    /*
+     * The minimum interval duration required to preload Bitmaps,
+     * if caching is enabled.
+     */
+    private static final int PRELOAD_THRESHOLD = 500;
 
     /**
      * Creates a new {@link tslamic.fancybg.FancyBackground.Builder}

@@ -1,4 +1,4 @@
-package tslamic.com.fancybackground;
+package tslamic.fancybg.example;
 
 import android.app.Activity;
 import android.os.Bundle;
@@ -6,6 +6,7 @@ import android.util.Log;
 import android.view.View;
 import android.widget.ImageView;
 
+import tslamic.fancybackground.R;
 import tslamic.fancybg.FancyBackground;
 
 
