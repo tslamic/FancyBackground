@@ -20,14 +20,20 @@ public class MainActivity extends Activity implements FancyBackground.FancyListe
         setContentView(R.layout.main);
 
         final View view = findViewById(R.id.parent);
-        FancyBackground
-                .on(view)
-                .listener(this)
-                .interval(2500)
-                .set(R.drawable.fbg_fst, R.drawable.fbg_snd, R.drawable.fbg_trd)
+
+        final int[] drawables = {
+                R.drawable.fbg_fst,
+                R.drawable.fbg_snd,
+                R.drawable.fbg_trd
+        };
+
+        FancyBackground.on(view)
+                .set(drawables)
                 .inAnimation(R.anim.fade_in)
                 .outAnimation(R.anim.fade_out)
+                .interval(2500)
                 .scale(ImageView.ScaleType.CENTER_CROP)
+                .listener(this)
                 .start();
     }
 

@@ -29,3 +29,7 @@ proguard/
 # Log Files
 *.log
 .DS_Store
+
+# Documentation
+docs/
+javadocgen.sh
