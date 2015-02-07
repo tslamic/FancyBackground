@@ -6,7 +6,7 @@ FancyBackground is an Android library capable of memory-efficiently loading and 
 
 It's simple: 
 
-```
+```java
 FancyBackground.on(view)
                .set(R.drawable.fst, R.drawable.snd) // and many more
                .inAnimation(R.anim.fade_in)
