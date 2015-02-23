@@ -1,5 +1,4 @@
 apply plugin: 'com.android.library'
-apply plugin: 'checkstyle'
 
 android {
     compileSdkVersion 19
@@ -23,16 +22,4 @@ android {
     }
 }
 
-task copyAar(type: Copy) {
-    from 'build/outputs/aar/fancybg-release.aar'
-    into '../download/'
-    rename { String fileName ->
-        fileName.replace('-release', '')
-    }
-}
-
-project.gradle.buildFinished { buildResult ->
-    if (buildResult.getFailure() == null) {
-        tasks.copyAar.execute();
-    }
-}
+apply from: 'https://raw.github.com/chrisbanes/gradle-mvn-push/master/gradle-mvn-push.gradle'
