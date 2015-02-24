@@ -6,7 +6,7 @@ Before  | After
 :-----------:|:-----------:
 ![plain](http://i.imgur.com/7kH0FIN.png?1) | ![fancybg](http://i.imgur.com/Sh4XegD.gif)
 
-Achieving the above above is easy:
+Achieving the above is easy:
 
 ```
 FancyBackground.on(view)
@@ -17,7 +17,7 @@ FancyBackground.on(view)
                .start(); 
 ```
 
-Don't forget to add the following in your `build.gradle`
+Don't forget to add the following in your `build.gradle`:
 
 ```
 dependencies {
@@ -71,7 +71,7 @@ Maven
 </dependency>
 ```
 
-or get a [jar here](http://search.maven.org/#search%7Cga%7C1%7C%22com.github.tslamic.fancybackground).
+or download the aar by [clicking here](http://search.maven.org/remotecontent?filepath=com/github/tslamic/fancybackground/library/1.0/library-1.0.aar).
 
 ### License
 
